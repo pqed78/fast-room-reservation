@@ -1,0 +1,24 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# AI generated files
+.ollama*
+.la*
+CLAUDE.md
+ollama*
+query*
+ask*
+
+# Data files
+reservations.json
+
+# Virtual environments
+.venv
+
+# Antigravity Setting
+antigravity.config.json
