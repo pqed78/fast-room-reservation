@@ -5,6 +5,7 @@ build/
 dist/
 wheels/
 *.egg-info
+requirments.txt
 
 # AI generated files
 .ollama*
