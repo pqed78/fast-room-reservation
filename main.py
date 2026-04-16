@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 from typing import List
 from pathlib import Path
+from datetime import datetime
 
 app = FastAPI()
 
@@ -29,6 +30,14 @@ def load_db():
 def save_db(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+LOG_FILE = Path("activity.log")
+
+def log_activity(action, res_data):
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_msg = f"[{now}] [{action}] 회의실: {res_data.get('roomName')}, 예약자: {res_data.get('userName')}, 일시: {res_data.get('date')} {res_data.get('time')}~{res_data.get('endTime')}\n"
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(log_msg)
 
 class ReservationBase(BaseModel):
     date: str
@@ -69,6 +78,7 @@ async def create_reservation(res: ReservationBase):
     new_res["id"] = str(uuid.uuid4())
     data.append(new_res)
     save_db(data)
+    log_activity("신청", new_res)
     new_res.pop("password", None)
     return new_res
 
@@ -84,6 +94,7 @@ async def delete_reservation(res_id: str, password: str = ""):
     if correct_pw and password != correct_pw:
         raise HTTPException(status_code=401, detail="암호가 일치하지 않습니다.")
         
+    log_activity("취소", target)
     filtered = [d for d in data if str(d.get("id")) != res_id]
     save_db(filtered)
     return {"status": "success"}
@@ -281,6 +292,7 @@ HTML_CONTENT = """
 
             const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
             const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+            const goToToday = () => setCurrentDate(new Date());
 
             const handleDateClick = (day, m) => {
                 setSelectedDate(new Date(year, m, day));
@@ -417,6 +429,9 @@ HTML_CONTENT = """
                                 {year}년 <span className={currentTheme.text}>{month + 1}월</span>
                             </h2>
                             <div className="flex gap-3">
+                                <button onClick={goToToday} className={`px-4 py-2 bg-white/60 hover:bg-white rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 ${currentTheme.ring} font-bold text-slate-700 flex items-center gap-1`}>
+                                    <i data-lucide="calendar" className="w-4 h-4"></i> 오늘
+                                </button>
                                 <button onClick={prevMonth} className={`p-3 bg-white/60 hover:bg-white rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 ${currentTheme.ring}`}>
                                     <i data-lucide="chevron-left" className="w-6 h-6 text-slate-600"></i>
                                 </button>
