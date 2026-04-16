@@ -1,0 +1,15 @@
+{
+  "model": "gemma4:e4b",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a Git commit message generator. The user has made the following changes:\n- Added password for reservation creation and cancellation.\n- Implemented overlapping time validation to prevent double booking in the same room.\n- Removed password from the API response (`get_reservations`) for security.\n- Added password input field to the React UI form."
+    },
+    {
+      "role": "user",
+      "content": "git 에 commit 하려고 하는데 좋은 메세지는?"
+    }
+  ],
+  "temperature": 0.1,
+  "max_tokens": 4096
+}

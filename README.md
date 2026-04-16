@@ -26,9 +26,11 @@
 * **빌드 단계 생략 (No Build Step)**: `npm install`이나 `npm run build` 과정이 전혀 필요 없습니다. React 18, Tailwind CSS, Babel을 모두 CDN 방식으로 연동하여 서버 실행 즉시 프론트엔드가 렌더링됩니다.
 * **단일 파일 백엔드 (Single-File Backend)**: 모든 API 로직과 렌더링용 HTML 템플릿 코드 전체가 `main.py` 파일 단 하나에 포함되어 유지보수가 극도로 용이합니다.
 
-#### 🏢 효율적인 회의실 및 시간 관리
-* **개별 회의실 캘린더**: 3개의 분리된 독립된 캘린더를 지원하며 랜딩 화면에서 클릭하여 진입합니다. 예약이 겹치지 않게 철저히 독립적으로 관리됩니다.
-* **엄격한 시간 검증 (EndTime Validation)**: 시작 시간에 맞춰 종료 시간(End Time)을 필수로 기입해야 하며, 시간 역전 시 자바스크립트를 통한 철저한 예외 처리를 제공합니다.
+#### 🏢 효율적인 예약 체계 (Booking & Security)
+* **개별 회의실 캘린더**: 3개의 분리된 독립된 캘린더를 지원하며 랜딩 화면에서 클릭하여 진입합니다.
+* **완벽한 중복 예약 차단 (Anti-Overbooking)**: 백엔드 서버에서 예약 시간을 계산하여, 같은 장소의 시간이 겹치는 경우 추가 예약을 원천 차단합니다.
+* **안전한 암호 인증 방어선 (Password Protection)**: 예약 생성 시 암호를 체결하여, 본인이 스스로 설정한 암호를 정확히 입력해야만 취소(삭제)가 이루어지도록 설계되었습니다.
+* **엄격한 시간 검증 (EndTime Validation)**: 시간 역전(시작 시간이 종료 시간보다 늦음) 시 강력한 예외 처리로 오류를 방지합니다.
 
 #### 💾 영구 데이터 저장
 * **DB Free Persistence**: 무거운 데이터베이스 앱이나 Docker 컨테이너 설치 없이, Pydantic으로 철저히 검증된 데이터 포맷을 가벼운 로컬 텍스트 파일(`reservations.json`) 스키마에 영구 저장합니다.
@@ -74,9 +76,11 @@ uv run main.py
 * **No Build Step**: Forget about `npm install` or `npm run build`. Leveraging React 18, Tailwind CSS, and Babel purely via CDN, the entire frontend is instantly integrated the moment the server boots up.
 * **Single-File Backend**: Experience ultimate operational ease. All backend logics, API abstractions, and HTML/CSS/JS frontend templates are elegantly combined into one single `main.py` file.
 
-#### 🏢 Deep Room Management & Time Logic
-* **Room-Specific Calendars**: Manage dependencies over 3 different meeting rooms. Users enter a specific room from a beautiful landing page, unlocking an independent calendar specific to that room.
-* **Strict Time Validation**: Enhanced with **End Time** implementations featuring strict client-side validation logic prohibiting reversed timestamp assignments.
+#### 🏢 Booking Logic & Security
+* **Room-Specific Calendars**: Manage spaces over 3 different meeting rooms via an elegant landing page, ensuring no cross-contamination of bookings.
+* **Strict Anti-Overbooking Mechanism**: The backend strictly compares timestamps, fundamentally obstructing any subsequent reservations overlapping with existing slots.
+* **Secure Authentication (Passwords)**: Mandates registering a specific credential (password) when securing a timeslot to authorize any potential deletion later on.
+* **Time Logical Validation**: Built-in strict checks reject chronologically impossible timeslots.
 
 #### 💾 Persistent Data Storage
 * **JSON-based Persistence**: Safely stores all reservation transactions implicitly inside a lightweight local file schema (`reservations.json`) leveraging robust `Pydantic` validations, completely eliminating the overhead of classic relational database constraints.

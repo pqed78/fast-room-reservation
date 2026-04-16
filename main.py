@@ -36,29 +36,55 @@ class ReservationBase(BaseModel):
     endTime: str
     roomName: str
     userName: str
+    password: str
 
 class Reservation(ReservationBase):
     id: str
 
-@app.get("/api/reservations", response_model=List[Reservation])
-async def get_reservations():
-    return load_db()
+class ReservationOut(BaseModel):
+    id: str
+    date: str
+    time: str
+    endTime: str
+    roomName: str
+    userName: str
 
-@app.post("/api/reservations", response_model=Reservation)
+@app.get("/api/reservations", response_model=List[ReservationOut])
+async def get_reservations():
+    data = load_db()
+    for d in data:
+        d.pop("password", None)
+    return data
+
+@app.post("/api/reservations", response_model=ReservationOut)
 async def create_reservation(res: ReservationBase):
     data = load_db()
+    
+    for existing in data:
+        if existing.get("date") == res.date and existing.get("roomName") == res.roomName:
+            if max(existing.get("time", ""), res.time) < min(existing.get("endTime", ""), res.endTime):
+                raise HTTPException(status_code=400, detail="이미 예약된 시간입니다.")
+                
     new_res = res.model_dump()
     new_res["id"] = str(uuid.uuid4())
     data.append(new_res)
     save_db(data)
+    new_res.pop("password", None)
     return new_res
 
 @app.delete("/api/reservations/{res_id}")
-async def delete_reservation(res_id: str):
+async def delete_reservation(res_id: str, password: str = ""):
     data = load_db()
-    filtered = [d for d in data if str(d["id"]) != str(res_id)]
-    if len(filtered) == len(data):
+    
+    target = next((d for d in data if str(d.get("id")) == res_id), None)
+    if not target:
         raise HTTPException(status_code=404, detail="Not found")
+        
+    correct_pw = target.get("password") or ""
+    if correct_pw and password != correct_pw:
+        raise HTTPException(status_code=401, detail="암호가 일치하지 않습니다.")
+        
+    filtered = [d for d in data if str(d.get("id")) != res_id]
     save_db(filtered)
     return {"status": "success"}
 
@@ -218,7 +244,8 @@ HTML_CONTENT = """
             const [formData, setFormData] = useState({
                 time: '',
                 endTime: '',
-                userName: ''
+                userName: '',
+                password: ''
             });
 
             const rooms = ["원탁회의실", "행정실쪽 회의실", "행정실 반대쪽 회의실"];
@@ -266,7 +293,7 @@ HTML_CONTENT = """
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
-                if (!formData.time || !formData.endTime || !formData.userName) return alert("모든 필드를 채워주세요.");
+                if (!formData.time || !formData.endTime || !formData.userName || !formData.password) return alert("모든 필드를 채워주세요.");
 
                 if (formData.time >= formData.endTime) {
                     return alert("종료 시간은 시작 시간보다 늦어야 합니다.");
@@ -289,9 +316,10 @@ HTML_CONTENT = """
                         const savedRes = await response.json();
                         setReservations([...reservations, savedRes]);
                         setIsModalOpen(false);
-                        setFormData({ time: '', endTime: '', userName: '' });
+                        setFormData({ time: '', endTime: '', userName: '', password: '' });
                     } else {
-                        alert("예약 등록에 실패했습니다.");
+                        const errData = await response.json();
+                        alert(errData.detail || "예약 등록에 실패했습니다.");
                     }
                 } catch (error) {
                     console.error(error);
@@ -300,17 +328,19 @@ HTML_CONTENT = """
             };
 
             const deleteReservation = async (id) => {
-                if (!window.confirm("이 예약을 삭제하시겠습니까?")) return;
+                const password = window.prompt("예약을 취소하려면 설정한 비밀번호를 입력하세요:");
+                if (password === null) return; // 취소 버튼 클릭시
 
                 try {
-                    const response = await fetch(`/api/reservations/${id}`, {
+                    const response = await fetch(`/api/reservations/${id}?password=${encodeURIComponent(password)}`, {
                         method: 'DELETE'
                     });
                     
                     if (response.ok) {
                         setReservations(reservations.filter(res => res.id !== id));
                     } else {
-                        alert("예약 취소에 실패했습니다.");
+                        const errData = await response.json();
+                        alert(errData.detail || "예약 취소에 실패했습니다.");
                     }
                 } catch (error) {
                     console.error(error);
@@ -474,13 +504,24 @@ HTML_CONTENT = """
                                             <input type="time" name="endTime" value={formData.endTime} onChange={handleInputChange} className={`w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 ${currentTheme.ring} focus:bg-white transition-all font-mono text-lg font-bold text-slate-700`} required />
                                         </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">예약자 성함</label>
-                                        <div className="relative">
-                                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                                <i data-lucide="user" className="w-5 h-5 text-slate-400"></i>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">예약자 성함</label>
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                    <i data-lucide="user" className="w-5 h-5 text-slate-400"></i>
+                                                </div>
+                                                <input type="text" name="userName" value={formData.userName} onChange={handleInputChange} className={`w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 ${currentTheme.ring} focus:bg-white transition-all text-slate-700 font-bold`} placeholder="예: 홍길동 책임" required />
                                             </div>
-                                            <input type="text" name="userName" value={formData.userName} onChange={handleInputChange} className={`w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 ${currentTheme.ring} focus:bg-white transition-all text-slate-700 font-bold`} placeholder="예: 홍길동 책임" required />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">비밀번호</label>
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                    <i data-lucide="lock" className="w-5 h-5 text-slate-400"></i>
+                                                </div>
+                                                <input type="password" name="password" value={formData.password} onChange={handleInputChange} className={`w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 ${currentTheme.ring} focus:bg-white transition-all text-slate-700 font-bold`} placeholder="취소용 암호" required />
+                                            </div>
                                         </div>
                                     </div>
                                     <button type="submit" className={`w-full ${currentTheme.bg} text-white py-4 mt-8 rounded-2xl font-black text-lg ${currentTheme.btnHover} shadow-lg ${currentTheme.shadow} transition-all hover:-translate-y-1`}>
