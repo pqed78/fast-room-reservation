@@ -7,6 +7,9 @@ wheels/
 *.egg-info
 requirements.txt
 
+# json files
+*.json
+
 # AI generated files
 .ollama*
 .la*
